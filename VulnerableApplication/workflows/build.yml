@@ -1,0 +1,47 @@
+nombre: Construir
+
+en:
+  empujar:
+    sucursales:
+      - principal
+
+
+trabajos:
+  construir:
+    nombre: Construir
+    se ejecuta en: windows-latest
+    pasos:
+      - usos: acciones/checkout@v2
+        con:
+          profundidad de búsqueda: 0 # Los clones superficiales deben deshabilitarse para una mejor relevancia del análisis
+      - nombre: configurar JDK 11
+        usos: acciones/setup-java@v1
+        con:
+          versión java: 1.11
+      - nombre: Caché de paquetes de SonarQube
+        usos: acciones/cache@v1
+        con:
+          ruta: ~\sonar\cache
+          clave: ${{ runner.os }}-sonar
+          restaurar-claves: ${{ runner.os }}-sonar
+      - nombre: caché del escáner SonarQube
+        id: caché-sonar-escáner
+        usos: acciones/cache@v1
+        con:
+          ruta: .\.sonar\escáner
+          clave: ${{ runner.os }}-escáner-sonar
+          claves de restauración: ${{ runner.os }}-escáner-sonar
+      - nombre: Instalar el escáner SonarQube
+        si: pasos.cache-sonar-scanner.outputs.cache-hit! = 'verdadero'
+        caparazón: powershell
+        ejecutar: |
+          Nuevo elemento -Ruta .\.sonar\scanner -Directorio de tipo de elemento
+          Actualización de la herramienta dotnet dotnet-sonarscanner --tool-path .\.sonar\scanner
+      - nombre: construir y analizar
+        entorno:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Necesario para obtener información de relaciones públicas, si corresponde
+        caparazón: powershell
+        ejecutar: |
+          .\.sonar\scanner\dotnet-sonarscanner comenzar /k:"VulnerableAppGustavoGarcia" /d:sonar.login="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
+          compilación de dotnet
+          .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.login="${{ secretos.SONAR_TOKEN }}"
